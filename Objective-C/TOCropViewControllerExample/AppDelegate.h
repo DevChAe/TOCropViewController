@@ -13,3 +13,11 @@
 @property (strong, nonatomic) UIWindow *window;
 
 @end
+
+// Required by the UIScene life cycle. The window itself is created from the storyboard
+// named by `UISceneStoryboardFile` in Info.plist.
+@interface SceneDelegate : UIResponder <UIWindowSceneDelegate>
+
+@property (strong, nonatomic) UIWindow *window;
+
+@end

@@ -42,3 +42,7 @@
 }
 
 @end
+
+@implementation SceneDelegate
+
+@end
