@@ -309,6 +309,33 @@ static void TOCropRunWhileScrollViewIsDragging(void (^block)(void)) {
     XCTAssertFalse(CGRectIsEmpty(toolbar.doneButtonFrame));
 }
 
+- (void)testPortraitLayoutStaysWithinLeftAndRightSafeArea {
+    TOCropViewController *controller = [[TOCropViewController alloc] initWithImage:[self testImageWithSize:(CGSize){40, 20}]];
+    controller.title = @"Title";
+
+    UIWindow *window = [[UIWindow alloc] initWithFrame:(CGRect){0, 0, 390, 844}];
+    window.rootViewController = controller;
+    [window makeKeyAndVisible];
+
+    // Simulate side cutouts (eg. a hinge on a dual-screen / foldable device)
+    controller.additionalSafeAreaInsets = (UIEdgeInsets){0, 40, 0, 60};
+    [controller.view layoutIfNeeded];
+
+    UIEdgeInsets safeInsets = controller.view.safeAreaInsets;
+    CGFloat minX = safeInsets.left;
+    CGFloat maxX = CGRectGetWidth(controller.view.bounds) - safeInsets.right;
+    XCTAssertGreaterThanOrEqual(safeInsets.left, 40.0f);
+    XCTAssertGreaterThanOrEqual(safeInsets.right, 60.0f);
+
+    CGRect toolbarFrame = controller.toolbar.frame;
+    XCTAssertGreaterThanOrEqual(CGRectGetMinX(toolbarFrame), minX - FLT_EPSILON);
+    XCTAssertLessThanOrEqual(CGRectGetMaxX(toolbarFrame), maxX + FLT_EPSILON);
+
+    CGRect titleFrame = controller.titleLabel.frame;
+    XCTAssertGreaterThanOrEqual(CGRectGetMinX(titleFrame), minX - FLT_EPSILON);
+    XCTAssertLessThanOrEqual(CGRectGetMaxX(titleFrame), maxX + FLT_EPSILON);
+}
+
 - (void)testToolButtonsSitCentredBetweenCancelAndDone {
     // Whichever design the toolbar was built with, its layout must agree with it. Laying
     // out for a glass container that was never built pins the tools to the leading edge.

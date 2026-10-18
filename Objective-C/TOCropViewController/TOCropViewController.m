@@ -306,6 +306,11 @@ static const CGFloat kTOCropViewControllerToolbarHeight = 44.0f;
             frame.size.height = CGRectGetHeight(self.view.frame);
         }
     } else {
+        // The horizontal space that is clear of the left/right safe area insets
+        const UIEdgeInsets safeInsets = self.view.safeAreaInsets;
+        const CGFloat availableWidth = CGRectGetWidth(self.view.bounds) - safeInsets.left - safeInsets.right;
+        CGFloat originX = safeInsets.left;
+
         if (TOCropViewUsesGlassDesign()) {
             CGRect frameInWindow = [self.view convertRect:self.view.bounds toView:nil];
             BOOL isFullscreen = true;
@@ -349,19 +354,24 @@ static const CGFloat kTOCropViewControllerToolbarHeight = 44.0f;
 #else
                 const CGFloat cornerRadius = 64.0f;
 #endif
-                frame.size.width = CGRectGetWidth(self.view.bounds) - MAX(cornerRadius, insets.bottom * 2.0f);
+                // Only the area between the left/right safe area insets may be used (eg. folded/dual-screen hinge, landscape cutouts)
+                frame.size.width = availableWidth - MAX(cornerRadius, insets.bottom * 2.0f);
+                originX = safeInsets.left + (availableWidth - frame.size.width) / 2.0f;
             } else {
                 // Match system toolbar insets
                 insets.left += self.view.layoutMargins.left + 12;
                 insets.right += self.view.layoutMargins.right + 12;
                 insets.bottom = MAX(0, insets.bottom - 6);
                 frame.size.width = CGRectGetWidth(self.view.bounds) - insets.left - insets.right;
+                originX = insets.left;
             }
         } else {
-            frame.size.width = CGRectGetWidth(self.view.bounds);
+            // The toolbar's background still bleeds to the edges via `backgroundViewOutsets`; only its content is inset
+            frame.size.width = availableWidth;
+            originX = safeInsets.left;
         }
 
-        frame.origin.x = (CGRectGetWidth(self.view.bounds) - frame.size.width) / 2.0f;
+        frame.origin.x = originX;
         frame.size.height = kTOCropViewControllerToolbarHeight;
 
         if (self.toolbarPosition == TOCropViewControllerToolbarPositionBottom) {
@@ -425,21 +435,20 @@ static const CGFloat kTOCropViewControllerToolbarHeight = 44.0f;
 
 - (CGRect)frameForTitleLabelWithSize:(CGSize)size verticalLayout:(BOOL)verticalLayout {
     CGRect frame = (CGRect){CGPointZero, size};
-    CGFloat viewWidth = self.view.bounds.size.width;
-    CGFloat x = 0.0f;  // Additional X offset in landscape mode
+    const UIEdgeInsets safeInsets = self.view.safeAreaInsets;
+
+    // Only center within the area that is clear of the left/right safe area insets
+    CGFloat x = safeInsets.left;  // Additional X offset
+    CGFloat viewWidth = self.view.bounds.size.width - x - safeInsets.right;
 
     // Adjust for landscape layout
     if (!verticalLayout) {
-        x = kTOCropViewControllerTitleTopPadding;
-        x += self.view.safeAreaInsets.left;
-        viewWidth -= x;
+        x += kTOCropViewControllerTitleTopPadding;
+        viewWidth -= kTOCropViewControllerTitleTopPadding;
     }
 
     // Work out horizontal position
-    frame.origin.x = ceilf((viewWidth - frame.size.width) * 0.5f);
-    if (!verticalLayout) {
-        frame.origin.x += x;
-    }
+    frame.origin.x = ceilf((viewWidth - frame.size.width) * 0.5f) + x;
 
     // Work out vertical position
     frame.origin.y = self.view.safeAreaInsets.top + kTOCropViewControllerTitleTopPadding;
@@ -495,6 +504,10 @@ static const CGFloat kTOCropViewControllerToolbarHeight = 44.0f;
     if (!self.verticalLayout) {
         insets.left = self.view.safeAreaInsets.left;
     } else {
+        // Let the background extend under the left/right safe area, since the toolbar's content is inset
+        insets.left = self.view.safeAreaInsets.left;
+        insets.right = self.view.safeAreaInsets.right;
+
         // Add padding on top if in vertical and tool bar is at the top
         if (self.toolbarPosition == TOCropViewControllerToolbarPositionTop) {
             insets.top = self.view.safeAreaInsets.top;
